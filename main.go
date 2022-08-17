@@ -6,76 +6,41 @@ import (
 	"time"
 )
 
-/*
-	"WaitGroup" を使ってみる
-*/
-// func main() {
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(2)
-// 	go func() {
-// 		defer wg.Done()
-// 		for i := 0; i < 5; i++ {
-// 			fmt.Printf("wg 1: %d / 5\n", i+1)
-// 			time.Sleep(1 * time.Second)
-// 		}
-// 	}()
-// 	go func() {
-// 		defer wg.Done()
-// 		for i := 0; i < 5; i++ {
-// 			fmt.Printf("wg 2: %d / 5\n", i+1)
-// 		}
-// 	}()
-// 	wg.Wait()
-// 	fmt.Println("wg: done")
-// }
-
-/*
-	非同期なループ処理
-*/
-// func main() {
-// 	ctx, cannel := context.WithTimeout(context.Background(), 5*time.Second+500*time.Millisecond)
-// 	defer cannel()
-
-// 	i := 0
-// L:
-// 	for {
-// 		fmt.Printf("loop %d\n", i)
-// 		i++
-// 		select {
-// 		case <-ctx.Done():
-// 			break L
-// 		case <-time.After(1 * time.Second):
-
-// 			// Sleep では sleep の途中に中断すると次のループに行ってしまうので、time.After で
-// 			// default:
-// 			// 	time.Sleep(1 * time.Second)
-// 		}
-// 	}
-// }
-
 func main() {
+	// now := time.Now()  // 最後の ctx.Done() は何秒後に呼ばれるのか確認する実験
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	// fmt.Println(cancel) // 1行上の defer cancel() をコメントアウトしても動くように追加した。 defer cancel() がなくてもこの関数は 10s で止まることがわかった
 
+	// fmt.Printf("Elapsed[1]: %s\n", time.Since(now))  // 即時実行される
 	go LoopWithBefore(ctx)
+	// fmt.Printf("Elapsed[2]: %s\n", time.Since(now))  // 即時実行される
 	go LoopWithAfter(ctx)
+	// fmt.Printf("Elapsed[3]: %s\n", time.Since(now))  // 即時実行される
 
+	// fmt.Printf("Elapsed[4]: %s\n", time.Since(now))  // 即時実行される
 	<-ctx.Done()
+	// fmt.Printf("Elapsed[5]: %s\n", time.Since(now))  // 10s 経過した後で実行される
 }
 
 func LoopWithBefore(ctx context.Context) {
+	// 3s 経過したら debug print して
 	beforeLoop := time.Now()
 
 	for {
+		// 時限式のチャネルを作って select で拾う
 		loopTimer := time.After(3 * time.Second)
 
+		// [疑問] これ、同期的な実行では？
+		// この例では 1.5s かかるとわかっているが、それを超える場合はどうなるのか？
+		// -> 予想通り 3.5s かかっていた
 		HeavyProcess(ctx, "BEFORE")
 
 		select {
 		case <-ctx.Done():
 			return
 		case <-loopTimer:
-			fmt.Printf("[BEFORE] loop duration: %.3fs\n", time.Now().Sub(beforeLoop).Seconds())
+			fmt.Printf("[BEFORE] loop duration: %.3fs %s\n", time.Since(beforeLoop).Seconds(), beforeLoop.GoString())
 			beforeLoop = time.Now()
 		}
 	}
@@ -90,7 +55,7 @@ func LoopWithAfter(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(3 * time.Second):
-			fmt.Printf("[AFTER] loop duration: %.3fs\n", time.Now().Sub(beforeLoop).Seconds())
+			fmt.Printf("[AFTER] loop duration: %.3fs %s\n", time.Since(beforeLoop).Seconds(), beforeLoop.GoString())
 			beforeLoop = time.Now()
 		}
 	}
