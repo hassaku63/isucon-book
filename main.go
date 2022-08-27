@@ -3,34 +3,24 @@ package main
 import (
 	"fmt"
 	"sync"
-	"time"
 )
 
 func main() {
+	userIds := []int{}
+	userIdsLock := &sync.Mutex{}
 	wg := &sync.WaitGroup{}
 
-	// go rountine の中で Add() を実行すると、go routine が起動する前に Wait() が実行されてしまう可能性がある
-	wg.Add(2)
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
 
-	go func() {
-		defer wg.Done()
+			userIdsLock.Lock()
+			userIds = append(userIds, id)
+			userIdsLock.Unlock()
+		}(i)
 
-		for i := 0; i < 5; i++ {
-			fmt.Printf("wg 1: %d\n", i+1)
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-
-		for i := 0; i < 5; i++ {
-			fmt.Printf("wg 2: %d\n", i+1)
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	wg.Wait()
-
-	fmt.Println("wg: done")
+		wg.Wait()
+	}
+	fmt.Printf("userIds: %v\n", userIds)
 }
