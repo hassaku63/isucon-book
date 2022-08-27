@@ -3,24 +3,31 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 func main() {
-	userIds := []int{}
-	userIdsLock := &sync.Mutex{}
-	wg := &sync.WaitGroup{}
+	var mu sync.Mutex
 
-	for i := 0; i < 20; i++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
+	mu.Lock()
 
-			userIdsLock.Lock()
-			userIds = append(userIds, id)
-			userIdsLock.Unlock()
-		}(i)
+	go func() {
+		<-time.After(1 * time.Second)
+		mu.Unlock()
+	}()
 
-		wg.Wait()
-	}
-	fmt.Printf("userIds: %v\n", userIds)
+	// LockWithValue(mu) // copylocks
+	LockWithRef(&mu)
+
+	fmt.Println("mutex unlocked.")
+}
+
+func LockWithValue(mu sync.Mutex) {
+	mu.Lock()
+	mu.Unlock()
+}
+
+func LockWithRef(mu *sync.Mutex) {
+	mu.Lock()
+	mu.Unlock()
 }
